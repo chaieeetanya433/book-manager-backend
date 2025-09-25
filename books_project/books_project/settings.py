@@ -73,7 +73,7 @@ def get_database_config():
                 'USER': os.environ.get('DB_USER', 'postgres'),
                 'PASSWORD': os.environ.get('DB_PASSWORD'),
                 'HOST': os.environ.get('DB_HOST'),
-                'PORT': os.environ.get('DB_PORT', '6543'),  # Use pooler port
+                'PORT': os.environ.get('DB_PORT', '5432'),  # Use pooler port
                 'OPTIONS': {
                     'sslmode': 'require',
                     'connect_timeout': 30,
