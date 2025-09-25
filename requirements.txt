@@ -5,5 +5,5 @@ python-decouple==3.8
 requests==2.31.0
 matplotlib==3.7.2
 seaborn==0.12.2
-Pillow==10.0.1
+Pillow==10.3.0
 django-cors-headers==4.3.1
