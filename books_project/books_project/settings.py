@@ -51,20 +51,65 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'books_project.wsgi.application'
 
-# Database Configuration (PostgreSQL/Supabase)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': os.environ.get('DB_HOST'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
-        'OPTIONS': {
-            'options': '-c default_transaction_isolation=serializable'
-        },
-    }
-}
+# IPv4 Fix for Render + Supabase
+if os.environ.get('RENDER') or 'render.com' in os.environ.get('RENDER_EXTERNAL_URL', ''):
+    import socket
+    
+    def getaddrinfo_wrapper(host, port, family=0, type=0, proto=0, flags=0):
+        return socket._original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+    
+    if not hasattr(socket, '_original_getaddrinfo'):
+        socket._original_getaddrinfo = socket.getaddrinfo
+        socket.getaddrinfo = getaddrinfo_wrapper
+
+# Database Configuration Function
+def get_database_config():
+    # Check if running on Render (production)
+    if os.environ.get('RENDER') or 'render.com' in os.environ.get('RENDER_EXTERNAL_URL', ''):
+        return {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': os.environ.get('DB_NAME', 'postgres'),
+                'USER': os.environ.get('DB_USER', 'postgres'),
+                'PASSWORD': os.environ.get('DB_PASSWORD'),
+                'HOST': os.environ.get('DB_HOST'),
+                'PORT': os.environ.get('DB_PORT', '6543'),  # Use pooler port
+                'OPTIONS': {
+                    'sslmode': 'require',
+                    'connect_timeout': 30,
+                },
+                'CONN_MAX_AGE': 60,
+                'CONN_HEALTH_CHECKS': True,
+            }
+        }
+    else:
+        # Local development - check if environment variables are set for PostgreSQL
+        if all([os.environ.get('DB_NAME'), os.environ.get('DB_USER'), 
+                os.environ.get('DB_PASSWORD'), os.environ.get('DB_HOST')]):
+            return {
+                'default': {
+                    'ENGINE': 'django.db.backends.postgresql',
+                    'NAME': os.environ.get('DB_NAME'),
+                    'USER': os.environ.get('DB_USER'),
+                    'PASSWORD': os.environ.get('DB_PASSWORD'),
+                    'HOST': os.environ.get('DB_HOST'),
+                    'PORT': os.environ.get('DB_PORT', '6543'),
+                    'OPTIONS': {
+                        'sslmode': 'require',
+                    },
+                }
+            }
+        else:
+            # Fallback to SQLite for local development
+            return {
+                'default': {
+                    'ENGINE': 'django.db.backends.sqlite3',
+                    'NAME': BASE_DIR / 'db.sqlite3',
+                }
+            }
+
+# Apply the database configuration
+DATABASES = get_database_config()
 
 # REST Framework Configuration
 REST_FRAMEWORK = {
